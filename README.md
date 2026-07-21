@@ -11,7 +11,8 @@ and it will be served at `https://<username>.github.io/what-should-i-wear/`.
 ## Features
 
 - **Now:** current conditions (fetched automatically from Open-Meteo,
-  defaulting to Oslo and changeable in Settings, always editable by hand)
+  defaulting to Oslo; pick any city or use device location in Settings,
+  and everything stays editable by hand)
   matched against every logged run. Your three closest past runs appear
   with what you wore, how it felt, and a similarity label; a one-line hint
   suggests warmer or lighter when the closest match was off. With no close
@@ -32,9 +33,9 @@ and it will be served at `https://<username>.github.io/what-should-i-wear/`.
 
 One self-contained `index.html`. No analytics, no cookies, no accounts.
 All data is saved in your browser's localStorage only. The only network
-request is the weather fetch to [Open-Meteo](https://open-meteo.com/);
-the coordinates it carries are the home location from Settings and nothing
-else. Location permission is requested only if you tap "Use device
+requests go to [Open-Meteo](https://open-meteo.com/) for the weather fetch
+and the Settings city search; the coordinates they carry are the home
+location and your search text, nothing else. Location permission is requested only if you tap "Use device
 location", never on load. Browsers can clear localStorage; the export file
 is the real home of your data, so back up regularly.
 

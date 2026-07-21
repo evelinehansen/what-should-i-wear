@@ -214,7 +214,13 @@ button{cursor:pointer}
 
 /* settings */
 .setcard{padding:18px 20px;margin-bottom:12px}
+.setcard h2{font-family:var(--serif);font-size:20px;font-weight:500;margin-bottom:4px}
+.setcard .sub{font:400 12px/1.5 var(--sans);color:var(--mut);margin-bottom:14px}
 .setnote{font:400 12px/1.7 var(--mono);color:var(--mut2);margin-top:12px}
+.curloc{display:flex;align-items:center;gap:8px;font:500 13px var(--mono);color:var(--teal);margin-bottom:12px}
+.locres{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.locbtn{text-align:left;padding:9px 12px;border-radius:9px;border:1px solid var(--line2);background:var(--field);font:400 13px var(--sans);color:var(--ink)}
+.locbtn small{color:var(--mut);font-family:var(--mono);font-size:11px}
 
 /* toast, banner, dialog */
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;font:500 13px var(--sans);z-index:50;box-shadow:0 8px 24px rgba(36,38,31,.25)}
@@ -313,7 +319,7 @@ const WX_FRESH_MS = 15 * 60 * 1000; // refetch when older than this
 function defaults() {
   return {
     schemaVersion: 1,
-    settings: { homeLat: 59.91, homeLon: 10.75, locationLabel: 'Oslo' }, // default home: Oslo
+    settings: { homeLat: 59.91, homeLon: 10.75, locationLabel: 'Oslo, Norway' }, // default home: Oslo
     wardrobe: [],
     runs: []
   };
@@ -335,7 +341,7 @@ function load() {
       !isFinite(d.settings.homeLon) || d.settings.homeLon === null) {
     d.settings.homeLat = 59.91;
     d.settings.homeLon = 10.75;
-    if (!d.settings.locationLabel) d.settings.locationLabel = 'Oslo';
+    if (!d.settings.locationLabel) d.settings.locationLabel = 'Oslo, Norway';
   }
   return d;
 }
@@ -371,6 +377,9 @@ const state = {
   editId: null,           // run id being edited, or null
   prefilledFrom: null,    // run the log outfit was prefilled from
   expanded: {},           // history rows open, by run id
+  locResults: null,       // city search results, or null when no search shown
+  locSearching: false,
+  locError: null,
   renameId: null,         // wardrobe item being renamed
   confirmDel: null,       // run id with delete armed
   importPending: null,    // parsed import waiting on replace-or-merge
@@ -966,24 +975,26 @@ function renderZone(z) {
 
 function renderSettings() {
   const s = data.settings;
-  return '<div class="card setcard">' +
-    '<h2 class="sect">Home location</h2>' +
-    '<div class="ctlrow">' +
-    '<div class="ctl"><span class="klabel">Latitude</span>' +
-      '<input type="number" step="0.0001" class="inp inp-num" style="width:130px" value="' + (s.homeLat === null ? '' : s.homeLat) + '" data-change="setLat" inputmode="decimal"></div>' +
-    '<div class="ctl"><span class="klabel">Longitude</span>' +
-      '<input type="number" step="0.0001" class="inp inp-num" style="width:130px" value="' + (s.homeLon === null ? '' : s.homeLon) + '" data-change="setLon" inputmode="decimal"></div>' +
-    '<div class="ctl"><span class="klabel">Label</span>' +
-      '<input type="text" class="inp" style="width:160px" maxlength="30" placeholder="Home" value="' + esc(s.locationLabel || '') + '" data-change="setLabel"></div>' +
-    '<div class="ctl"><span class="klabel">&nbsp;</span>' +
-      '<button type="button" class="btn-small" data-action="useDevice">Use device location</button></div>' +
-    '</div>' +
-    '<p class="setnote">Used only to fetch current weather from Open-Meteo; the coordinates are stored in this browser and sent nowhere else. ' +
-    'Defaults to Oslo. Location permission is asked only when you tap the button, never on load. ' +
-    'Fetched conditions are only a starting point; anything you type wins.</p>' +
-    '</div>' +
+  let html = '<div class="card setcard"><h2>Location</h2>' +
+    '<div class="sub">The weather fetch follows this place.</div>' +
+    '<div class="curloc">\u{1F4CD} ' + esc(s.locationLabel || (s.homeLat + ', ' + s.homeLon)) + '</div>' +
+    '<div style="display:flex;gap:7px"><input class="inp" type="text" id="locq" placeholder="Search city&hellip;" style="flex:1;min-width:0" data-enter="searchLoc">' +
+    '<button type="button" class="btn-small" data-action="searchLoc">Search</button></div>';
+  if (state.locSearching) html += '<div class="setnote">Searching&hellip;</div>';
+  if (state.locError) html += '<div class="setnote" style="color:var(--bad)">' + esc(state.locError) + '</div>';
+  if (state.locResults) {
+    html += '<div class="locres">' + (state.locResults.length === 0 ? '<div class="setnote">No matches.</div>' :
+      state.locResults.map((r, i) => '<button type="button" class="locbtn" data-action="pickLoc" data-arg="' + i + '">' + esc(r.name) +
+        ' <small>' + esc([r.admin1, r.country].filter(Boolean).join(', ')) + '</small></button>').join('')) + '</div>';
+  }
+  html += '<div style="margin-top:12px"><button type="button" class="btn-small" data-action="useDevice">Use device location</button></div>' +
+    '<p class="setnote">Used only to fetch current weather from Open-Meteo; the location is stored in this browser and sent nowhere else. ' +
+    'Location permission is asked only when you tap the button, never on load. ' +
+    'Fetched conditions are only a starting point; anything you type on the Now tab wins.</p>' +
+    '</div>';
+  return html +
     '<div class="card setcard">' +
-    '<h2 class="sect">How matching works</h2>' +
+    '<h2>How matching works</h2>' +
     '<p class="setnote" style="margin-top:0">Each past run gets a distance score against current conditions: ' +
     'temperature difference &times; ' + W.temp + ', plus wind difference &times; ' + W.wind + ', plus ' + W.precipBothWet +
     ' if both days were wet in different ways (or ' + W.precipWetDry + ' for wet against dry), plus ' + W.intensityStep +
@@ -1012,7 +1023,7 @@ function renderImportDialog() {
 function renderFoot() {
   return '<div class="foot"><div class="fine">' +
     'All data lives in this browser only (localStorage). No accounts, no analytics. ' +
-    'The only network request is the weather fetch to Open-Meteo. ' +
+    'The only network requests are the weather fetch and city search, both to Open-Meteo. ' +
     'Browsers can clear local storage, so the export file is the real home of your data. ' +
     'Weather data by Open-Meteo (CC BY 4.0).' +
     '</div></div>';
@@ -1055,14 +1066,36 @@ const actions = {
   nowPrecip(el) { state.now.precip = el.dataset.id; state.now.source = 'manual'; state.nowTouched = true; render(); },
   nowIntensity(el) { state.now.intensity = el.dataset.id; render(); },
   refreshWx() { fetchWeather(true); },
+  searchLoc() {
+    const q = (document.getElementById('locq') || {}).value || '';
+    if (!q.trim()) return;
+    state.locSearching = true; state.locError = null; state.locResults = null; render();
+    fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q.trim()) + '&count=6&language=en&format=json')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(j => { state.locSearching = false; state.locResults = j.results || []; render(); })
+      .catch(e => { state.locSearching = false; state.locError = 'Search failed: ' + ((e && e.message) || 'network error'); render(); });
+  },
+  pickLoc(el) {
+    const r = state.locResults[+el.dataset.arg];
+    if (!r) return;
+    data.settings.homeLat = Math.round(r.latitude * 10000) / 10000;
+    data.settings.homeLon = Math.round(r.longitude * 10000) / 10000;
+    data.settings.locationLabel = r.name + (r.country ? ', ' + r.country : '');
+    persist();
+    state.locResults = null;
+    state.wx = null;
+    state.nowTouched = false; // let the fresh fetch fill the Now conditions
+    fetchWeather(true);
+  },
   useDevice() {
     if (!navigator.geolocation) { flash('Geolocation is not available in this browser'); return; }
     navigator.geolocation.getCurrentPosition(pos => {
       data.settings.homeLat = Math.round(pos.coords.latitude * 10000) / 10000;
       data.settings.homeLon = Math.round(pos.coords.longitude * 10000) / 10000;
-      if (!data.settings.locationLabel) data.settings.locationLabel = 'Device location';
+      data.settings.locationLabel = 'Device location';
       persist();
       state.wx = null;
+      state.nowTouched = false;
       fetchWeather(true);
       render();
     }, () => { flash('Could not get device location'); });
@@ -1169,19 +1202,6 @@ const changes = {
   note(el) { state.draft.note = el.value; },
   nowTemp(el) { state.now.tempC = el.value; state.now.source = 'manual'; state.nowTouched = true; render(); },
   nowWind(el) { state.now.windMs = el.value; state.now.source = 'manual'; state.nowTouched = true; render(); },
-  setLat(el) {
-    const v = parseFloat(el.value);
-    data.settings.homeLat = (isFinite(v) && v >= -90 && v <= 90) ? Math.round(v * 10000) / 10000 : null;
-    persist(); state.wx = null; state.wxStatus = 'idle';
-    if (hasHome()) fetchWeather(true);
-  },
-  setLon(el) {
-    const v = parseFloat(el.value);
-    data.settings.homeLon = (isFinite(v) && v >= -180 && v <= 180) ? Math.round(v * 10000) / 10000 : null;
-    persist(); state.wx = null; state.wxStatus = 'idle';
-    if (hasHome()) fetchWeather(true);
-  },
-  setLabel(el) { data.settings.locationLabel = el.value.trim(); persist(); },
   importFile(el) {
     const f = el.files && el.files[0];
     el.value = '';
@@ -1209,7 +1229,10 @@ document.addEventListener('focusout', e => {
   if (e.target.classList && e.target.classList.contains('rename-inp')) commitRename(e.target);
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('rename-inp')) commitRename(e.target);
+  if (e.key !== 'Enter') return;
+  const en = e.target.closest && e.target.closest('[data-enter]');
+  if (en && actions[en.dataset.enter]) { e.preventDefault(); actions[en.dataset.enter](en); return; }
+  if (e.target.classList && e.target.classList.contains('rename-inp')) commitRename(e.target);
 });
 
 document.addEventListener('submit', e => {
