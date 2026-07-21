@@ -562,7 +562,12 @@ function fetchWeather(force) {
 /* ---------- export / import ---------- */
 
 function doExport() {
-  const out = { schemaVersion: 1, settings: data.settings, wardrobe: data.wardrobe, runs: data.runs };
+  // outfitNames mirrors outfit as readable labels, for humans reading the file.
+  // Import ignores it and rebuilds from the ids, so it can never drift.
+  const runs = data.runs.map(r => Object.assign({}, r, {
+    outfitNames: (r.outfit || []).map(id => { const it = itemById(id); return it ? it.name : id; })
+  }));
+  const out = { schemaVersion: 1, settings: data.settings, wardrobe: data.wardrobe, runs };
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -585,6 +590,7 @@ function readImportFile(file) {
       flash('Not a recognised backup file');
       return;
     }
+    p.runs.forEach(r => { delete r.outfitNames; });  // display-only in the file, ids are the truth
     if (data.wardrobe.length === 0 && data.runs.length === 0) {
       applyImport(p, 'replace');
     } else {
