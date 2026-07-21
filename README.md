@@ -5,8 +5,6 @@ Log what you wore and how it felt; the tool plays it back when similar
 conditions return. Sibling of **When should I run** (that one answers
 *when*, this one answers *what*).
 
-**Live:** enable GitHub Pages on this repo (Settings → Pages → main / root)
-and it will be served at `https://<username>.github.io/what-should-i-wear/`.
 
 ## Features
 
