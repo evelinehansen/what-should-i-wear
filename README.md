@@ -10,12 +10,13 @@ and it will be served at `https://<username>.github.io/what-should-i-wear/`.
 
 ## Features
 
-- **Now:** current conditions (fetched automatically from MET Norway if you
-  set a home location, always editable) matched against every logged run.
-  Your three closest past runs appear with what you wore, how it felt, and
-  a similarity label; a one-line hint suggests warmer or lighter when the
-  closest match was off. With no close match, a generic dress-by-temperature
-  chart steps in until your own data takes over.
+- **Now:** current conditions (fetched automatically from Open-Meteo,
+  defaulting to Oslo and changeable in Settings, always editable by hand)
+  matched against every logged run. Your three closest past runs appear
+  with what you wore, how it felt, and a similarity label; a one-line hint
+  suggests warmer or lighter when the closest match was off. With no close
+  match, a generic dress-by-temperature chart steps in until your own data
+  takes over.
 - **Log a run** in under 30 seconds: conditions and outfit are prefilled
   from the weather fetch and your closest match; adjust with taps, give a
   five-point comfort verdict (much too cold to much too warm), done.
@@ -24,16 +25,18 @@ and it will be served at `https://<username>.github.io/what-should-i-wear/`.
 - **History:** reverse-chronological, tap to expand, edit and delete.
 - **Export / import:** full backup as one JSON file, merge or replace.
 - Transparent matching: plain arithmetic, documented in Settings, no AI.
-- Mobile friendly; fully usable offline with manual condition entry.
+- Mobile friendly, installable to the home screen; fully usable offline
+  with manual condition entry.
 
 ## Privacy
 
 One self-contained `index.html`. No analytics, no cookies, no accounts.
 All data is saved in your browser's localStorage only. The only network
-request is the forecast fetch to [MET Norway](https://api.met.no/), and
-only if you set a home location; leave it unset and nothing is fetched at
-all. Location permission is requested only if you tap "Use device
+request is the weather fetch to [Open-Meteo](https://open-meteo.com/);
+the coordinates it carries are the home location from Settings and nothing
+else. Location permission is requested only if you tap "Use device
 location", never on load. Browsers can clear localStorage; the export file
 is the real home of your data, so back up regularly.
 
-Weather data by MET Norway (NLOD / CC BY 4.0).
+Weather data by Open-Meteo (CC BY 4.0), based on national weather services
+such as MET Norway.
